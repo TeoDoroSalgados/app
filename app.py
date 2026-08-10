@@ -101,14 +101,14 @@ with tab1:
         ]
     })
     st.table(df_costs)
-    st.info(f"Rendimento estimado: **~{int(total_units_per_kg)} unidades** de {coxinhaWeight}g por pacote de 1 kg. Custo por unidade: **R$ {cost_per_unit:.2f}**.")
+    st.info(f"Rendimento estimado: **~{int(total_units_per_kg)} unidades** de {coxinha_weight}g por pacote de 1 kg. Custo por unidade: **R$ {cost_per_unit:.2f}**.")
 
 with tab2:
     st.header("Formação de Preço de Venda (Markup)")
     
     col1, col2 = st.columns(2)
     col1.metric("Preço Sugerido por Pacote (1 kg)", f"R$ {suggested_price_per_kg:.2f}", delta=f"Lucro: R$ {profit_per_kg:.2f}/kg")
-    col2.metric(f"Preço Sugerido por Unidade ({coxinhaweight}g)", f"R$ {suggested_price_per_unit:.2f}")
+    col2.metric(f"Preço Sugerido por Unidade ({coxinha_weight}g)", f"R$ {suggested_price_per_unit:.2f}")
 
     st.markdown("---")
     st.write(f"**Markup Aplicado:** `{1/divisor:.2f}x`")
@@ -127,7 +127,7 @@ with tab3:
 with tab4:
     st.header("Visualização do Rótulo Padrão ANVISA (100x150mm)")
     
-    st.markdown("""
+    st.markdown(f"""
     <div style="background-color: white; color: black; padding: 20px; border-radius: 10px; border: 2px solid #ccc; max-width: 450px; margin: auto; font-family: Arial, sans-serif; font-size: 12px;">
         <div style="text-align: center; font-weight: bold; font-size: 14px; color: #b45309;">TeoDoro's Salgados</div>
         <div style="text-align: center; font-size: 11px; color: #555;">Artesanais & Congelados</div>
@@ -138,7 +138,7 @@ with tab4:
         <div style="border: 1px solid black; padding: 6px;">
             <div style="text-align: center; font-weight: bold; font-size: 11px;">INFORMAÇÃO NUTRICIONAL</div>
             <div style="font-size: 9px;">Porções por embalagem: Cerca de 25 porções (aprox. 50 unidades)</div>
-            <div style="font-size: 9px;">Porção: 40 g (2 unidades)</div>
+            <div style="font-size: 9px;">Porção: 40 g (2 unidades de {coxinha_weight} g)</div>
             <table style="width: 100%; font-size: 9px; border-collapse: collapse; margin-top: 4px;" border="1">
                 <tr style="background: #eee;">
                     <th></th><th>100g</th><th>Porção</th><th>%VD*</th>
