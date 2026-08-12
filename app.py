@@ -1,11 +1,10 @@
-
 import streamlit as st
 import pandas as pd
 import random
 import string
 
 st.set_page_config(
-    page_title="TeoDoro's Salgados - Calculadora e Precificação",
+    page_title="TeoDoro's - Sistema de Custos & Precificação",
     page_icon="🥟",
     layout="wide",
 )
@@ -25,7 +24,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- BANCO DE DADOS DE LICENÇAS NA SESSÃO (Para persistir durante os testes no Streamlit) ---
+# --- BANCO DE DADOS DE LICENÇAS NA SESSÃO ---
 if "licencas_db" not in st.session_state:
     st.session_state.licencas_db = {
         "INI-1700-TESTE": {"plano": "Iniciante", "nome": "Produtor Iniciante", "status": "Ativo"},
@@ -33,17 +32,27 @@ if "licencas_db" not in st.session_state:
         "PREM-7900-TESTE": {"plano": "Premium", "nome": "Fábrica / Premium", "status": "Ativo"}
     }
 
-st.sidebar.header("🔐 Acesso & Licenciamento")
+# --- ESTOQUE DE INSUMOS DO CLIENTE (Sessão) ---
+if "estoque_insumos" not in st.session_state:
+    st.session_state.estoque_insumos = {
+        "Farinha de Trigo": {"preco": 5.00, "unidade": "kg"},
+        "Peito de Frango": {"preco": 18.00, "unidade": "kg"},
+        "Açúcar Cristal": {"preco": 4.80, "unidade": "kg"},
+        "Leite Condensado": {"preco": 6.50, "unidade": "un"},
+        "Chocolate em Pó": {"preco": 25.00, "unidade": "kg"},
+        "Cebola": {"preco": 4.50, "unidade": "kg"},
+        "Alho": {"preco": 15.00, "unidade": "kg"},
+        "Óleo Vegetal": {"preco": 9.00, "unidade": "L"},
+        "Sal": {"preco": 3.50, "unidade": "kg"},
+    }
 
-# Modo Admin ou Cliente na Barra Lateral
+st.sidebar.header("🔐 Acesso & Licenciamento")
 modo_acesso = st.sidebar.radio("Modo de Acesso", ["Cliente / Assinante", "Painel Administrativo (Admin)"])
 
 if modo_acesso == "Painel Administrativo (Admin)":
     st.sidebar.markdown("---")
     st.sidebar.subheader("🔑 Login do Administrador")
     senha_admin = st.sidebar.text_input("Senha Mestre", type="password")
-    
-    # Senha mestre padrão do admin (pode alterar aqui)
     SENHA_MESTRE_ADMIN = "teo2026admin"
     
     if senha_admin == SENHA_MESTRE_ADMIN:
@@ -53,18 +62,16 @@ if modo_acesso == "Painel Administrativo (Admin)":
         if senha_admin:
             st.sidebar.error("❌ Senha incorreta.")
         st.session_state.is_admin = False
-    
     plano_ativo = "Admin"
 else:
     st.session_state.is_admin = False
-    
     if "usuario_logado" not in st.session_state:
         st.session_state.usuario_logado = False
         st.session_state.plano_atual = "Gratuito (Visitante)"
         st.session_state.nome_cliente = ""
 
     if not st.session_state.usuario_logado:
-        st.sidebar.markdown("Digite sua **Chave de Licença** do plano adquirido:")
+        st.sidebar.markdown("Digite sua **Chave de Licença**:")
         chave_input = st.sidebar.text_input("Chave de Licença", type="password")
         
         if st.sidebar.button("Ativar Acesso"):
@@ -75,14 +82,13 @@ else:
                 st.sidebar.success(f"Acesso liberado: {st.session_state.nome_cliente}!")
                 st.rerun()
             else:
-                st.sidebar.error("❌ Chave inválida ou desativada.")
+                st.sidebar.error("❌ Chave inválida.")
         
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 🏷️ Nossos Planos:")
-        st.sidebar.markdown("- **Iniciante (R$ 17/mês)**")
-        st.sidebar.markdown("- **Profissional (R$ 39/mês)**")
-        st.sidebar.markdown("- **Premium (R$ 79/mês)**")
-        
+        st.sidebar.markdown("- **Iniciante (R$ 17/mês):** Ficha básica.")
+        st.sidebar.markdown("- **Profissional (R$ 39/mês):** Custos + Markup + Break-Even.")
+        st.sidebar.markdown("- **Premium (R$ 79/mês):** Estoque + Receitas Customizadas + ANVISA.")
         plano_ativo = "Gratuito"
     else:
         st.sidebar.success(f"Plano Ativo: **{st.session_state.plano_atual}**")
@@ -92,87 +98,81 @@ else:
             st.rerun()
         plano_ativo = st.session_state.plano_atual
 
-# --- TELA DO PAINEL ADMINISTRATIVO ---
+# --- PAINEL ADMIN ---
 if st.session_state.get("is_admin", False):
-    st.title("🛠️ Painel Administrativo - TeoDoro's Salgados")
-    st.markdown("Gerencie as chaves de licença dos clientes, crie novos acessos e monitore assinaturas ativas.")
+    st.title("🛠️ Painel Administrativo - Gestão de Licenças")
+    st.markdown("Gerencie as chaves de licença dos clientes dos 3 planos.")
     
     col_adm1, col_adm2 = st.columns(2)
-    
     with col_adm1:
-        st.subheader("➕ Gerar Nova Chave de Licença")
+        st.subheader("➕ Gerar Nova Chave")
         with st.form("form_nova_chave"):
-            nome_cliente_novo = st.text_input("Nome do Cliente / Empresa", value="Ex: Buffet do Carlos")
+            nome_cliente_novo = st.text_input("Nome do Cliente", value="Ex: Confeitaria Doce Mel")
             plano_escolhido = st.selectbox("Plano Contratado", ["Iniciante", "Profissional", "Premium"])
-            
             gerar_btn = st.form_submit_button("Gerar Chave de Acesso")
             
             if gerar_btn:
-                # Prefixo baseado no plano
                 prefixo = "INI" if plano_escolhido == "Iniciante" else ("PRO" if plano_escolhido == "Profissional" else "PREM")
                 sufixo = ''.join(random.choices(string.digits, k=4))
                 nova_chave = f"{prefixo}-{sufixo}-{random.randint(10,99)}"
-                
-                st.session_state.licencas_db[nova_chave] = {
-                    "plano": plano_escolhido,
-                    "nome": nome_cliente_novo,
-                    "status": "Ativo"
-                }
-                st.success(f"Chave gerada com sucesso para **{nome_cliente_novo}**!")
+                st.session_state.licencas_db[nova_chave] = {"plano": plano_escolhido, "nome": nome_cliente_novo, "status": "Ativo"}
+                st.success("Chave gerada com sucesso!")
                 st.code(nova_chave)
 
     with col_adm2:
-        st.subheader("📋 Lista de Chaves Ativas no Sistema")
+        st.subheader("📋 Chaves Ativas")
         df_licencas = pd.DataFrame([
             {"Chave": k, "Plano": v["plano"], "Cliente": v["nome"], "Status": v["status"]}
             for k, v in st.session_state.licencas_db.items()
         ])
         st.dataframe(df_licencas, use_container_width=True)
-        
-        st.info("💡 **Dica:** Você pode copiar a chave gerada e enviá-la diretamente para o cliente via WhatsApp após a confirmação do pagamento via Pix.")
 
 else:
-    # --- APLICATIVO NORMAL PARA O CLIENTE ---
-    st.title("🥟 TeoDoro's Salgados - Sistema de Custos & Precificação")
+    # --- APP DO CLIENTE ---
+    st.title("🥟 Sistema Universal de Custos, Fichas Técnicas & Precificação")
+    st.markdown("Atende a todos os nichos de alimentação: **Salgados, Doces, Confeitaria, Massas e Marmitas**.")
 
     tem_profissional = plano_ativo in ["Profissional", "Premium"]
     tem_premium = plano_ativo == "Premium"
 
     if plano_ativo == "Gratuito":
-        st.warning("⚠️ Modo de demonstração (Visitante). Insira uma chave de licença na barra lateral para liberar as funcionalidades do seu plano.")
+        st.warning("⚠️ Modo de demonstração (Visitante). Insira uma chave de licença válida na barra lateral para liberar as funcionalidades do seu plano.")
 
-    tabs = ["📊 Ficha Técnica Básica (Iniciante)"]
+    tabs = ["📊 Ficha Técnica Básica"]
     if tem_profissional:
-        tabs.append("💰 Precificação & Ponto de Equilíbrio (Profissional)")
+        tabs.append("💰 Precificação & Ponto de Equilíbrio")
     if tem_premium:
-        tabs.append("⭐ Construtor de Receitas Customizadas (Premium)")
-        tabs.append("🏷️ Rotulagem ANVISA Oficial (Premium)")
+        tabs.append("📦 Gestão de Insumos (Estoque)")
+        tabs.append("⭐ Construtor Inteligente de Receitas")
+        tabs.append("🏷️ Rotulagem ANVISA Oficial")
 
     selected_tabs = st.tabs(tabs)
 
+    # ABA 1: Iniciante
     with selected_tabs[0]:
-        st.header("📊 Ficha Técnica & Custo Base (Mini Coxinha TeoDoro's)")
+        st.header("📊 Ficha Técnica & Custo Base")
+        peso_un = st.slider("Peso médio de cada unidade (g)", 10, 50, 20, 5)
         
-        col_i1, col_i2 = st.columns(2)
-        chicken_price = col_i1.number_input("Preço do Peito de Frango (kg)", value=18.00, step=0.50)
-        flour_price = col_i2.number_input("Preço da Farinha de Trigo (kg)", value=5.00, step=0.50)
-        coxinha_weight = st.slider("Peso médio da coxinha (g)", 10, 50, 20, 5)
+        f_trigo = st.session_state.estoque_insumos.get("Farinha de Trigo", {}).get("preco", 5.0)
+        p_frango = st.session_state.estoque_insumos.get("Peito de Frango", {}).get("preco", 18.0)
         
-        total_cost_per_kg = (0.3 * chicken_price) + (4.0 * flour_price) / 5.9 + 1.50
-        total_units = 1000 / coxinha_weight
+        total_cost_per_kg = (0.3 * p_frango) + (4.0 * f_trigo) / 5.9 + 1.50
+        total_units = 1000 / peso_un
         cost_per_unit = total_cost_per_kg / total_units
         
-        st.metric("Custo Total de Produção por Pacote (1 kg)", f"R$ {total_cost_per_kg:.2f}")
-        st.metric(f"Custo Unitário por Coxinha ({coxinha_weight}g)", f"R$ {cost_per_unit:.2f}")
+        col_b1, col_b2 = st.columns(2)
+        col_b1.metric("Custo Total por kg", f"R$ {total_cost_per_kg:.2f}")
+        col_b2.metric(f"Custo Unitário ({peso_un}g)", f"R$ {cost_per_unit:.2f}")
         
         if plano_ativo == "Gratuito":
-            st.info("💡 **Dica:** Faça o upgrade para o **Plano Profissional (R$ 39/mês)** para calcular margens de lucro, markup automático e o ponto de equilíbrio!")
+            st.info("💡 Faça o upgrade para o **Plano Profissional (R$ 39/mês)** para calcular margens de lucro, markup automático e o ponto de equilíbrio!")
 
+    # ABA 2: Profissional
     if tem_profissional:
         with selected_tabs[1]:
             st.header("💰 Módulo Profissional: Precificação Avançada & Break-Even")
             col_p1, col_p2 = st.columns(2)
-            fixed_costs = col_p1.number_input("Custos Fixos Mensais (Aluguel, Energia, etc.)", value=1500.00, step=100.00)
+            fixed_costs = col_p1.number_input("Custos Fixos Mensais (R$)", value=1500.00, step=100.00)
             profit_margin = col_p2.slider("Margem de Lucro Desejada (%)", 10, 60, 30, 5)
             
             opex_percent = 20
@@ -189,49 +189,115 @@ else:
             
             col_m1, col_m2 = st.columns(2)
             col_m1.metric("Preço de Venda Sugerido (1 kg)", f"R$ {suggested_price:.2f}", delta=f"Lucro: R$ {profit_kg:.2f}/kg")
-            col_m2.metric(f"Preço Sugerido por Unidade ({coxinha_weight}g)", f"R$ {unit_price:.2f}")
+            col_m2.metric(f"Preço Sugerido por Unidade ({peso_un}g)", f"R$ {unit_price:.2f}")
             
             st.markdown("---")
             st.subheader("📈 Ponto de Equilíbrio (Break-Even)")
-            st.metric("Volume Mínimo de Vendas para Cobrir Custos", f"{break_even_kg:.1f} pacotes / mês")
+            st.metric("Volume Mínimo de Vendas para Cobrir Custos", f"{break_even_kg:.1f} kg / mês")
 
+    # ABA 3: Gestão de Insumos (Estoque) - Premium
+    tab_index = 2
     if tem_premium:
-        with selected_tabs[2]:
-            st.header("⭐ Construtor de Receitas Personalizadas (Área Premium)")
-            st.markdown("Cadastre os ingredientes e quantidades dos seus próprios salgados.")
-            with st.form("custom_recipe"):
-                recipe_name = st.text_input("Nome do Salgado", value="Esfiha de Carne")
-                batch_yield = st.number_input("Rendimento do lote (unidades)", value=100, step=10)
+        with selected_tabs[tab_index]:
+            st.header("📦 Gestão de Insumos & Preços (Estoque Universal)")
+            st.markdown("Cadastre ingredientes para qualquer nicho (salgados, doces, confeitarias) e atualize preços sempre que precisar.")
+            
+            with st.form("form_add_insumo"):
+                st.subheader("Adicionar ou Atualizar Ingrediente")
+                col_in1, col_in2, col_in3 = st.columns(3)
+                novo_nome = col_in1.text_input("Nome do Insumo (ex: Leite Condensado, Chocolate)", value="")
+                novo_preco = col_in2.number_input("Preço Unitário (R$)", value=10.0, step=0.50)
+                nova_unidade = col_in3.selectbox("Unidade de Medida", ["kg", "L", "un", "g", "ml", "pct"])
                 
-                c1, c2, c3 = st.columns(3)
-                ing1_nome = c1.text_input("Ingrediente 1", value="Farinha de Trigo")
-                ing1_qtd = c2.number_input("Qtd 1 (kg)", value=2.0)
-                ing1_preco = c3.number_input("Preço 1 (R$/kg)", value=5.0)
-                
-                submitted = st.form_submit_button("🧮 Calcular Receita Personalizada")
-                
-            if submitted:
-                custo_lote = (ing1_qtd * ing1_preco) + 5.00
-                custo_un = custo_lote / batch_yield
-                st.success(f"Receita **{recipe_name}** calculada com sucesso!")
-                st.metric("Custo Total do Lote", f"R$ {custo_lote:.2f}")
-                st.metric("Custo por Unidade", f"R$ {custo_un:.2f}")
+                salvar_insumo = st.form_submit_button("Salvar no Estoque")
+                if salvar_insumo and novo_nome:
+                    st.session_state.estoque_insumos[novo_nome] = {"preco": novo_preco, "unidade": nova_unidade}
+                    st.success(f"Insumo **{novo_nome}** salvo/atualizado com sucesso!")
+            
+            st.markdown("---")
+            st.subheader("Seus Insumos Cadastrados no Sistema")
+            insumos_list = [{"Ingrediente": k, "Preço (R$)": v["preco"], "Unidade": v["unidade"]} for k, v in st.session_state.estoque_insumos.items()]
+            st.dataframe(pd.DataFrame(insumos_list), use_container_width=True)
+            st.info("💡 Estes ingredientes aparecem automaticamente no **Construtor Inteligente de Receitas**.")
+        
+        tab_index += 1
 
-        with selected_tabs[3]:
+        # ABA 4: Construtor Inteligente de Receitas - Premium
+        with selected_tabs[tab_index]:
+            st.header("⭐ Construtor Inteligente de Receitas (Multi-Nicho)")
+            st.markdown("Selecione os ingredientes do estoque, informe a quantidade usada e o sistema calcula tudo instantaneamente.")
+            
+            with st.form("form_receita_inteligente"):
+                nome_receita_custom = st.text_input("Nome do Produto (ex: Brigadeiro Gourmet, Esfiha, Bolo de Pote)", value="Brigadeiro Gourmet")
+                rendimento_lote_custom = st.number_input("Rendimento do Lote (unidades ou porções)", value=50, step=5)
+                
+                st.markdown("### Selecione os Ingredientes para o Lote:")
+                ingredientes_disponiveis = list(st.session_state.estoque_insumos.keys())
+                ingredientes_selecionados = []
+                
+                for idx in range(6):
+                    col_s1, col_s2 = st.columns([3, 2])
+                    ing_escolhido = col_s1.selectbox(f"Ingrediente {idx+1}", ["-- Nenhum --"] + ingredientes_disponiveis, key=f"ing_esc_{idx}")
+                    qtd_usada = col_s2.number_input(f"Qtd usada no lote ({idx+1})", value=0.0, step=0.1, format="%.3f", key=f"qtd_usada_{idx}")
+                    
+                    if ing_escolhido != "-- Nenhum --" and qtd_usada > 0:
+                        preco_unit = st.session_state.estoque_insumos[ing_escolhido]["preco"]
+                        unidade_medida = st.session_state.estoque_insumos[ing_escolhido]["unidade"]
+                        custo_parcial = qtd_usada * preco_unit
+                        ingredientes_selecionados.append({
+                            "Ingrediente": ing_escolhido,
+                            "Quantidade": f"{qtd_usada} {unidade_medida}",
+                            "Preço Unit.": f"R$ {preco_unit:.2f}",
+                            "Custo Total": custo_parcial
+                        })
+                
+                custo_embalagem_lote = st.number_input("Custo de Embalagem / Embalagem para o Lote (R$)", value=5.00, step=0.50)
+                calcular_receita_btn = st.form_submit_button("🧮 Calcular Custos e Precificação")
+                
+            if calcular_receita_btn:
+                if ingredientes_selecionados:
+                    df_rec_result = pd.DataFrame(ingredientes_selecionados)
+                    custo_ingredientes_soma = df_rec_result["Custo Total"].sum()
+                    custo_total_lote_final = custo_ingredientes_soma + custo_embalagem_lote
+                    custo_unitario_final = custo_total_lote_final / rendimento_lote_custom
+                    
+                    div_custom = (100 - (30 + 20 + 5)) / 100
+                    preco_venda_lote_sug = custo_total_lote_final / max(0.1, div_custom)
+                    preco_venda_unit_sug = preco_venda_lote_sug / rendimento_lote_custom
+                    
+                    st.markdown("---")
+                    st.subheader(f"📊 Relatório de Custos: {nome_receita_custom}")
+                    
+                    col_c1, col_c2, col_c3 = st.columns(3)
+                    col_c1.metric("Custo Total do Lote", f"R$ {custo_total_lote_final:.2f}")
+                    col_c2.metric("Custo por Unidade", f"R$ {custo_unitario_final:.2f}")
+                    col_c3.metric("Preço de Venda Sugerido (Un.)", f"R$ {preco_venda_unit_sug:.2f}", delta=f"Lucro: R$ {(preco_venda_unit_sug - custo_unitario_final):.2f}/un")
+                    
+                    st.markdown("### Detalhamento dos Custos")
+                    st.table(df_rec_result)
+                    st.success("Receita calculada com sucesso!")
+                else:
+                    st.warning("⚠️ Selecione pelo menos um ingrediente e informe a quantidade.")
+
+        tab_index += 1
+
+        # ABA 5: Rotulagem ANVISA - Premium
+        with selected_tabs[tab_index]:
             st.header("🏷️ Geração de Rótulo ANVISA Oficial (100x150mm)")
             st.markdown("Prévia oficial pronta para impressão com logomarca e código de barras.")
-            st.markdown(f"""
+            
+            st.markdown("""
             <div style="background-color: white; color: black; padding: 20px; border-radius: 10px; border: 2px solid #ccc; max-width: 450px; margin: auto; font-family: Arial, sans-serif; font-size: 12px;">
-                <div style="text-align: center; font-weight: bold; font-size: 14px; color: #b45309;">TeoDoro's Salgados</div>
+                <div style="text-align: center; font-weight: bold; font-size: 14px; color: #b45309;">TeoDoro's Salgados & Doces</div>
                 <div style="text-align: center; font-size: 11px; color: #555;">Artesanais & Congelados</div>
                 <hr style="margin: 8px 0;">
-                <div style="text-align: center; font-weight: bold; font-size: 13px;">MINI COXINHAS DE FRANGO</div>
+                <div style="text-align: center; font-weight: bold; font-size: 13px;">PRODUTO ARTESANAL</div>
                 <div style="text-align: center; font-size: 11px; color: #1e40af;">Peso Líquido: 1 kg</div>
-                <br>
+                  
+
                 <div style="border: 1px solid black; padding: 6px;">
                     <div style="text-align: center; font-weight: bold; font-size: 11px;">INFORMAÇÃO NUTRICIONAL</div>
-                    <div style="font-size: 9px;">Porções por embalagem: Cerca de 25 porções (aprox. 50 unidades)</div>
-                    <div style="font-size: 9px;">Porção: 40 g (2 unidades de {coxinha_weight} g)</div>
+                    <div style="font-size: 9px;">Porções por embalagem: Cerca de 25 porções</div>
                     <table style="width: 100%; font-size: 9px; border-collapse: collapse; margin-top: 4px;" border="1">
                         <tr style="background: #eee;">
                             <th></th><th>100g</th><th>Porção</th><th>%VD*</th>
@@ -243,10 +309,16 @@ else:
                         <tr><td>Sódio</td><td>323 mg</td><td>129 mg</td><td>6%</td></tr>
                     </table>
                 </div>
-                <br>
+                  
+
                 <div style="font-size: 10px;">
-                    <b>INGREDIENTES:</b> Água, farinha de trigo, filé de peito de frango, tempero caseiro e óleo vegetal.<br>
-                    <b>ALÉRGICOS:</b> CONTÉM DERIVADOS DE TRIGO. CONTÉM GLÚTEN.
+                    <b>INGREDIENTES:</b> Ingredientes cadastrados no sistema.  
+
+                    <b>ALÉRGICOS:</b> CONTÉM DERIVADOS DE TRIGO E LEITE. CONTÉM GLÚTEN.
+                </div>
+                <div style="text-align: center; margin-top: 10px; font-family: monospace; font-size: 11px;">
+                    ||| ||||| |||| |||||   
+7891020304055
                 </div>
             </div>
             """, unsafe_allow_html=True)
