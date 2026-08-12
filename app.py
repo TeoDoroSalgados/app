@@ -273,7 +273,7 @@ else:
             marca_atual = st.session_state.config_marca["nome_empresa"]
             slogan_atual = st.session_state.config_marca["nome_fantasia"]
             
-            rotulo_html = f\"\"\"
+            rotulo_html = f"""
             <div style="background-color: white; color: black; padding: 20px; border-radius: 10px; border: 2px solid #333; max-width: 450px; margin: auto; font-family: Arial, sans-serif; font-size: 12px;">
                 <div style="text-align: center; font-weight: bold; font-size: 15px; color: #b45309;">{marca_atual}</div>
                 <div style="text-align: center; font-size: 11px; color: #555;">{slogan_atual}</div>
@@ -291,7 +291,7 @@ else:
                 </div>
                 <div style="text-align: center; margin-top: 12px;">{svg_barcode}</div>
             </div>
-            \"\"\"
+            """
             st.components.v1.html(rotulo_html, height=480, scrolling=True)
         tab_idx += 1
 
