@@ -286,21 +286,21 @@ else:
             st.header("🏷️ Geração de Rótulo ANVISA Oficial (100x150mm)")
             st.markdown("Prévia oficial pronta para impressão com logomarca e código de barras.")
             
-            st.markdown("""
+            rotulo_html = """
             <div style="background-color: white; color: black; padding: 20px; border-radius: 10px; border: 2px solid #ccc; max-width: 450px; margin: auto; font-family: Arial, sans-serif; font-size: 12px;">
                 <div style="text-align: center; font-weight: bold; font-size: 14px; color: #b45309;">TeoDoro's Salgados & Doces</div>
                 <div style="text-align: center; font-size: 11px; color: #555;">Artesanais & Congelados</div>
                 <hr style="margin: 8px 0;">
-                <div style="text-align: center; font-weight: bold; font-size: 13px;">PRODUTO ARTESANAL</div>
-                <div style="text-align: center; font-size: 11px; color: #1e40af;">Peso Líquido: 1 kg</div>
+                <div style="text-align: center; font-weight: bold; font-size: 13px;">TABELA NUTRICIONAL</div>
+                <div style="text-align: center; font-size: 11px; color: #1e40af;">Produto Artesanal</div>
                   
 
                 <div style="border: 1px solid black; padding: 6px;">
                     <div style="text-align: center; font-weight: bold; font-size: 11px;">INFORMAÇÃO NUTRICIONAL</div>
-                    <div style="font-size: 9px;">Porções por embalagem: Cerca de 25 porções</div>
+                    <div style="font-size: 9px;">Porção de referência conforme ANVISA</div>
                     <table style="width: 100%; font-size: 9px; border-collapse: collapse; margin-top: 4px;" border="1">
                         <tr style="background: #eee;">
-                            <th></th><th>100g</th><th>Porção</th><th>%VD*</th>
+                            <th>Nutriente</th><th>100g</th><th>Porção</th><th>%VD*</th>
                         </tr>
                         <tr><td>Valor energético</td><td>227 kcal</td><td>91 kcal</td><td>5%</td></tr>
                         <tr><td>Carboidratos</td><td>39,1 g</td><td>15,6 g</td><td>5%</td></tr>
@@ -312,13 +312,14 @@ else:
                   
 
                 <div style="font-size: 10px;">
-                    <b>INGREDIENTES:</b> Ingredientes cadastrados no sistema.  
+                    <b>INGREDIENTES:</b> Conforme cadastro no estoque.  
 
-                    <b>ALÉRGICOS:</b> CONTÉM DERIVADOS DE TRIGO E LEITE. CONTÉM GLÚTEN.
+                    <b>ALÉRGICOS:</b> CONTÉM GLÚTEN E DERIVADOS.
                 </div>
                 <div style="text-align: center; margin-top: 10px; font-family: monospace; font-size: 11px;">
                     ||| ||||| |||| |||||   
 7891020304055
                 </div>
             </div>
-            """, unsafe_allow_html=True)
+            """
+            st.components.v1.html(rotulo_html, height=480, scrolling=True)
