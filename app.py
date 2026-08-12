@@ -1,8 +1,3 @@
-Aqui está o código completo e atualizado do arquivo **`app_streamlit.py`** (já com a Gestão de Estoque, Construtor Inteligente de Receitas para qualquer nicho de alimentação, os 3 planos e o Painel Administrativo).
-
-Basta copiar todo o código abaixo, colar no seu arquivo `app.py` lá no GitHub e clicar em **Commit changes**:
-
-```python
 import streamlit as st
 import pandas as pd
 import random
@@ -298,7 +293,8 @@ else:
                 <hr style="margin: 8px 0;">
                 <div style="text-align: center; font-weight: bold; font-size: 13px;">PRODUTO ARTESANAL</div>
                 <div style="text-align: center; font-size: 11px; color: #1e40af;">Peso Líquido: 1 kg</div>
-                <br>
+                  
+
                 <div style="border: 1px solid black; padding: 6px;">
                     <div style="text-align: center; font-weight: bold; font-size: 11px;">INFORMAÇÃO NUTRICIONAL</div>
                     <div style="font-size: 9px;">Porções por embalagem: Cerca de 25 porções</div>
@@ -313,14 +309,16 @@ else:
                         <tr><td>Sódio</td><td>323 mg</td><td>129 mg</td><td>6%</td></tr>
                     </table>
                 </div>
-                <br>
+                  
+
                 <div style="font-size: 10px;">
-                    <b>INGREDIENTES:</b> Ingredientes cadastrados no sistema.<br>
+                    <b>INGREDIENTES:</b> Ingredientes cadastrados no sistema.  
+
                     <b>ALÉRGICOS:</b> CONTÉM DERIVADOS DE TRIGO E LEITE. CONTÉM GLÚTEN.
                 </div>
                 <div style="text-align: center; margin-top: 10px; font-family: monospace; font-size: 11px;">
-                    ||| ||||| |||| ||||| <br>7891020304055
+                    ||| ||||| |||| |||||   
+7891020304055
                 </div>
             </div>
             """, unsafe_allow_html=True)
-```
