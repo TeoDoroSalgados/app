@@ -1,4 +1,3 @@
-import streamlit as st
 import pandas as pd
 import random
 import string
@@ -58,6 +57,7 @@ if "estoque_insumos" not in st.session_state:
     st.session_state.estoque_insumos = {
         "Farinha de Trigo": {"preco": 5.00, "unidade": "kg", "fornecedor": "Atacadão"},
         "Peito de Frango": {"preco": 18.00, "unidade": "kg", "fornecedor": "Frango Frango"},
+        "Margarina": {"preco": 9.50, "unidade": "kg", "fornecedor": "Atacadão"},
         "Açúcar Cristal": {"preco": 4.80, "unidade": "kg", "fornecedor": "Mercado Local"},
         "Leite Condensado": {"preco": 6.50, "unidade": "un", "fornecedor": "Atacadão"},
         "Óleo Vegetal": {"preco": 9.00, "unidade": "L", "fornecedor": "Distribuidora"},
@@ -147,7 +147,7 @@ else:
 
 # --- PAINEL ADMIN ---
 if st.session_state.get("is_admin", False):
-    st.title("🛠️ Painel Administrativo - SaaS SaaS Master")
+    st.title("🛠️ Painel Administrativo - SaaS Master")
     st.markdown("Gerencie licenças de clientes e visualize estatísticas gerais da plataforma.")
     
     col1, col2 = st.columns(2)
@@ -198,14 +198,13 @@ else:
         col_m4.metric("Seu Plano Atual", plano_ativo)
         
         st.markdown("---")
-        st.subheader("📋 Seus Produtos Cadastrados")
         if st.session_state.produtos_cadastrados:
             df_prod = pd.DataFrame(st.session_state.produtos_cadastrados)
             st.dataframe(df_prod, use_container_width=True)
         else:
             st.info("Nenhum produto cadastrado ainda. Vá na aba **Ficha Técnica & Precificação** para cadastrar seu primeiro produto.")
 
-    # 2. INSUMOS & EMBALAGENS
+    # 2. INSUMOS & EMBALAGENS (COM EDIÇÃO DIRETA E SALVAR)
     with selected_tabs[1]:
         st.header("📦 Gestão de Insumos & Embalagens")
         st.markdown("Cadastre os ingredientes e embalagens de qualquer nicho (doces, salgados, massas, bolos, marmitas) e atualize preços sempre que necessário.")
@@ -213,15 +212,39 @@ else:
         col_e1, col_e2 = st.columns(2)
         with col_e1:
             st.subheader("Insumos (Matéria-Prima)")
+            
+            # --- SEÇÃO DE EDIÇÃO RÁPIDA DE INSUMO EXISTENTE ---
+            with st.expander("✏️ Editar Insumo Existente (Ex: Atualizar Preço da Margarina)", expanded=False):
+                if st.session_state.estoque_insumos:
+                    insumo_para_editar = st.selectbox("Selecione o Insumo para Editar", list(st.session_state.estoque_insumos.keys()), key="sel_insumo_edit")
+                    dados_atuais = st.session_state.estoque_insumos[insumo_para_editar]
+                    
+                    novo_preco_edit = st.number_input("Novo Preço de Compra (R$)", value=float(dados_atuais["preco"]), step=0.50, key="novo_preco_edit")
+                    nova_unidade_edit = st.selectbox("Nova Unidade", ["kg", "L", "un", "g", "ml", "pct"], index=["kg", "L", "un", "g", "ml", "pct"].index(dados_atuais["unidade"]) if dados_atuais["unidade"] in ["kg", "L", "un", "g", "ml", "pct"] else 0, key="nova_unidade_edit")
+                    novo_forn_edit = st.text_input("Novo Fornecedor", value=dados_atuais["fornecedor"], key="novo_forn_edit")
+                    
+                    if st.button("💾 Salvar Alterações do Insumo"):
+                        st.session_state.estoque_insumos[insumo_para_editar] = {
+                            "preco": novo_preco_edit,
+                            "unidade": nova_unidade_edit,
+                            "fornecedor": novo_forn_edit
+                        }
+                        st.success(f"Insumo **{insumo_para_editar}** atualizado com sucesso! (Novo preço: R$ {novo_preco_edit:.2f})")
+                        st.rerun()
+                else:
+                    st.info("Nenhum insumo cadastrado para editar.")
+
             with st.form("form_insumo"):
-                nome_i = st.text_input("Nome do Insumo (ex: Chocolate, Farinha, Carne)")
+                st.markdown("#### Adicionar Novo Insumo")
+                nome_i = st.text_input("Nome do Insumo (ex: Margarina, Chocolate, Farinha)")
                 preco_i = st.number_input("Preço de Compra (R$)", value=10.0, step=0.50)
                 unidade_i = st.selectbox("Unidade", ["kg", "L", "un", "g", "ml", "pct"])
                 forn_i = st.text_input("Fornecedor", value="Fornecedor Local")
-                salvar_i = st.form_submit_button("Salvar Insumo")
+                salvar_i = st.form_submit_button("Salvar Novo Insumo")
                 if salvar_i and nome_i:
                     st.session_state.estoque_insumos[nome_i] = {"preco": preco_i, "unidade": unidade_i, "fornecedor": forn_i}
                     st.success(f"Insumo **{nome_i}** salvo com sucesso!")
+                    st.rerun()
             
             st.markdown("---")
             pesquisa_insumo = st.text_input("🔍 Pesquisar Insumo por Nome", value="")
@@ -235,18 +258,62 @@ else:
                     insumos_filtrados.append({"Insumo": k, "Preço (R$)": v["preco"], "Unidade": v["unidade"], "Fornecedor": v["fornecedor"]})
             
             df_ins = pd.DataFrame(insumos_filtrados)
-            st.dataframe(df_ins, use_container_width=True)
+            
+            st.markdown("#### 📋 Tabela de Estoque")
+            if not df_ins.empty:
+                edited_df = st.data_editor(
+                    df_ins,
+                    num_rows="dynamic",
+                    use_container_width=True,
+                    key="editor_estoque"
+                )
+                if st.button("💾 Salvar Alterações da Tabela"):
+                    novo_estoque = {}
+                    for idx, row in edited_df.iterrows():
+                        nome_ing = row["Insumo"]
+                        if nome_ing:
+                            novo_estoque[nome_ing] = {
+                                "preco": float(row["Preço (R$)"]),
+                                "unidade": str(row["Unidade"]),
+                                "fornecedor": str(row["Fornecedor"])
+                            }
+                    st.session_state.estoque_insumos = novo_estoque
+                    st.success("Estoque atualizado com sucesso a partir da tabela!")
+                    st.rerun()
+            else:
+                st.info("Nenhum insumo encontrado com os filtros atuais.")
 
         with col_e2:
             st.subheader("Embalagens & Etiquetas")
+            
+            with st.expander("✏️ Editar Embalagem Existente", expanded=False):
+                if st.session_state.embalagens:
+                    emb_para_editar = st.selectbox("Selecione a Embalagem", list(st.session_state.embalagens.keys()), key="sel_emb_edit")
+                    dados_emb_atuais = st.session_state.embalagens[emb_para_editar]
+                    
+                    novo_preco_emb_edit = st.number_input("Novo Preço Unitário (R$)", value=float(dados_emb_atuais["preco"]), step=0.10, key="novo_preco_emb_edit")
+                    novo_forn_emb_edit = st.text_input("Novo Fornecedor", value=dados_emb_atuais["fornecedor"], key="novo_forn_emb_edit")
+                    
+                    if st.button("💾 Salvar Embalagem"):
+                        st.session_state.embalagens[emb_para_editar] = {
+                            "preco": novo_preco_emb_edit,
+                            "fornecedor": novo_forn_emb_edit
+                        }
+                        st.success(f"Embalagem **{emb_para_editar}** atualizada!")
+                        st.rerun()
+                else:
+                    st.info("Nenhuma embalagem cadastrada.")
+
             with st.form("form_emb"):
+                st.markdown("#### Adicionar Nova Embalagem")
                 nome_e = st.text_input("Nome da Embalagem (ex: Caixa, Pote, Saco)")
                 preco_e = st.number_input("Preço Unitário (R$)", value=1.0, step=0.10)
                 forn_e = st.text_input("Fornecedor da Embalagem", value="Embalagens Express")
-                salvar_e = st.form_submit_button("Salvar Embalagem")
+                salvar_e = st.form_submit_button("Salvar Nova Embalagem")
                 if salvar_e and nome_e:
                     st.session_state.embalagens[nome_e] = {"preco": preco_e, "fornecedor": forn_e}
                     st.success(f"Embalagem **{nome_e}** salva com sucesso!")
+                    st.rerun()
             
             df_emb = pd.DataFrame([{"Embalagem": k, "Preço Unit. (R$)": v["preco"], "Fornecedor": v["fornecedor"]} for k, v in st.session_state.embalagens.items()])
             st.dataframe(df_emb, use_container_width=True)
@@ -317,8 +384,7 @@ else:
                 custo_total_lote = soma_insumos + custo_emb
                 custo_unit = custo_total_lote / rendimento_prod
                 
-                # Markup / Divisor
-                imposto_taxa = 10 # 10% taxas cartão/impostos
+                imposto_taxa = 10
                 divisor = max(0.1, (100 - (margem_lucro_desejada + imposto_taxa)) / 100)
                 preco_venda_lote = custo_total_lote / divisor
                 preco_venda_unit = preco_venda_lote / rendimento_prod
@@ -334,7 +400,6 @@ else:
                 st.markdown("### Detalhamento dos Custos")
                 st.table(df_ing_res)
                 
-                # Salvar no dashboard
                 novo_p = {
                     "nome": nome_prod,
                     "rendimento": rendimento_prod,
@@ -343,7 +408,6 @@ else:
                     "preco_sugerido": round(preco_venda_lote, 2),
                     "lucro": round(preco_venda_lote - custo_total_lote, 2)
                 }
-                # Evita duplicatas exatas
                 if novo_p not in st.session_state.produtos_cadastrados:
                     st.session_state.produtos_cadastrados.append(novo_p)
                 st.success("Produto calculado e salvo no Dashboard com sucesso!")
@@ -398,7 +462,7 @@ else:
                 st.success("Dados da marca salvos com sucesso!")
         tab_idx += 1
 
-        # 7. ROTULAGEM ANVISA - PREMIUM
+        # 7. RÓTULO ANVISA OFICIAL
         with selected_tabs[tab_idx]:
             st.header("🏷️ Geração de Rótulo ANVISA Oficial")
             st.markdown("Prévia de rótulo nutricional pronta para impressão com logomarca e código de barras.")
@@ -417,8 +481,6 @@ else:
             marca_atual = st.session_state.config_marca["nome_empresa"]
             slogan_atual = st.session_state.config_marca["nome_fantasia"]
             
-            # Cálculo nutricional automático baseado em insumos do estoque
-            # Estimativa estequiométrica padrão por 100g baseada nos itens cadastrados
             total_itens_estoque = len(st.session_state.estoque_insumos)
             fator_calorico = 220 + (total_itens_estoque * 3)
             kcal_100g = round(fator_calorico, 1)
@@ -432,14 +494,12 @@ else:
             sodio_100g = round(310 + (total_itens_estoque * 5), 1)
             sodio_porcao = round(sodio_100g * 0.4, 1)
             
-            # Renderizar logo se houver
             logo_html = ""
             if st.session_state.config_marca["logo_bytes"]:
                 import base64
                 encoded_logo = base64.b64encode(st.session_state.config_marca["logo_bytes"]).decode("utf-8")
                 logo_html = f'<div style="text-align: center; margin-bottom: 8px;"><img src="data:image/png;base64,{encoded_logo}" style="max-height: 50px; max-width: 120px; object-fit: contain;"></div>'
             
-            # Lista dinâmica de ingredientes com base no estoque
             lista_ingredientes_str = ", ".join(list(st.session_state.estoque_insumos.keys()))
 
             rotulo_html = f"""
