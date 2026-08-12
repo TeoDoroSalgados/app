@@ -4,48 +4,91 @@ import random
 import string
 
 st.set_page_config(
-    page_title="TeoDoro's - Sistema de Custos & Precificação",
-    page_icon="🥟",
+    page_title="Plataforma SaaS Profissional - Precificação & Ficha Técnica",
+    page_icon="📊",
     layout="wide",
 )
 
+# --- ESTILIZAÇÃO CSS PROFISSIONAL ---
 st.markdown("""
     <style>
     .main {
-        background-color: #090d16;
-        color: #f8fafc;
+        background-color: #0b0f19;
+        color: #f1f5f9;
     }
     .stMetric {
-        background-color: #111827;
-        padding: 15px;
+        background-color: #1e293b;
+        padding: 18px;
+        border-radius: 14px;
+        border: 1px solid #334155;
+    }
+    .card {
+        background-color: #1e293b;
+        padding: 20px;
         border-radius: 12px;
-        border: 1px solid #1f2937;
+        border: 1px solid #334155;
+        margin-bottom: 15px;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- BANCO DE DADOS DE LICENÇAS NA SESSÃO ---
+# --- BANCO DE DADOS NA SESSÃO ---
 if "licencas_db" not in st.session_state:
     st.session_state.licencas_db = {
+        "FREE-DEMO-2026": {"plano": "Gratuito", "nome": "Usuário Demonstrativo", "status": "Ativo"},
         "INI-1700-TESTE": {"plano": "Iniciante", "nome": "Produtor Iniciante", "status": "Ativo"},
         "PRO-3900-TESTE": {"plano": "Profissional", "nome": "Salgaderia Profissional", "status": "Ativo"},
-        "PREM-7900-TESTE": {"plano": "Premium", "nome": "Fábrica / Premium", "status": "Ativo"}
+        "PREM-7900-TESTE": {"plano": "Premium", "nome": "Empresa / Fábrica Premium", "status": "Ativo"}
     }
 
-# --- ESTOQUE DE INSUMOS DO CLIENTE (Sessão) ---
+if "config_marca" not in st.session_state:
+    st.session_state.config_marca = {
+        "nome_empresa": "Minha Empresa de Alimentos",
+        "nome_fantasia": "Salgados & Doces Artesanais",
+        "whatsapp": "(11) 99999-9999",
+        "email": "contato@empresa.com",
+        "cor_primaria": "#d97706"
+    }
+
 if "estoque_insumos" not in st.session_state:
     st.session_state.estoque_insumos = {
-        "Farinha de Trigo": {"preco": 5.00, "unidade": "kg"},
-        "Peito de Frango": {"preco": 18.00, "unidade": "kg"},
-        "Açúcar Cristal": {"preco": 4.80, "unidade": "kg"},
-        "Leite Condensado": {"preco": 6.50, "unidade": "un"},
-        "Chocolate em Pó": {"preco": 25.00, "unidade": "kg"},
-        "Cebola": {"preco": 4.50, "unidade": "kg"},
-        "Alho": {"preco": 15.00, "unidade": "kg"},
-        "Óleo Vegetal": {"preco": 9.00, "unidade": "L"},
-        "Sal": {"preco": 3.50, "unidade": "kg"},
+        "Farinha de Trigo": {"preco": 5.00, "unidade": "kg", "fornecedor": "Atacadão"},
+        "Peito de Frango": {"preco": 18.00, "unidade": "kg", "fornecedor": "Frango Frango"},
+        "Açúcar Cristal": {"preco": 4.80, "unidade": "kg", "fornecedor": "Mercado Local"},
+        "Leite Condensado": {"preco": 6.50, "unidade": "un", "fornecedor": "Atacadão"},
+        "Óleo Vegetal": {"preco": 9.00, "unidade": "L", "fornecedor": "Distribuidora"},
+        "Sal": {"preco": 3.50, "unidade": "kg", "fornecedor": "Supermercado"}
     }
 
+if "embalagens" not in st.session_state:
+    st.session_state.embalagens = {
+        "Caixa de Papelão 1kg": {"preco": 1.20, "fornecedor": "Embalagens Express"},
+        "Saco Plástico 1kg": {"preco": 0.30, "fornecedor": "PlastCorp"},
+        "Etiqueta Adesiva": {"preco": 0.15, "fornecedor": "Gráfica Rápida"}
+    }
+
+if "custos_fixos" not in st.session_state:
+    st.session_state.custos_fixos = {
+        "Aluguel": 1200.00,
+        "Energia Elétrica": 450.00,
+        "Água": 120.00,
+        "Internet & Telefone": 150.00,
+        "Contador": 400.00
+    }
+
+if "produtos_cadastrados" not in st.session_state:
+    st.session_state.produtos_cadastrados = [
+        {
+            "nome": "Mini Coxinha de Frango (1kg)",
+            "rendimento": 50,
+            "peso_un": 20,
+            "custo_total": 12.50,
+            "preco_sugerido": 25.00,
+            "lucro": 12.50
+        }
+    ]
+
+# --- BARRA LATERAL: LICENCIAMENTO E NAVEGAÇÃO ---
 st.sidebar.header("🔐 Acesso & Licenciamento")
 modo_acesso = st.sidebar.radio("Modo de Acesso", ["Cliente / Assinante", "Painel Administrativo (Admin)"])
 
@@ -53,9 +96,7 @@ if modo_acesso == "Painel Administrativo (Admin)":
     st.sidebar.markdown("---")
     st.sidebar.subheader("🔑 Login do Administrador")
     senha_admin = st.sidebar.text_input("Senha Mestre", type="password")
-    SENHA_MESTRE_ADMIN = "teo2026admin"
-    
-    if senha_admin == SENHA_MESTRE_ADMIN:
+    if senha_admin == "teo2026admin":
         st.sidebar.success("✅ Painel Admin Liberado!")
         st.session_state.is_admin = True
     else:
@@ -67,32 +108,34 @@ else:
     st.session_state.is_admin = False
     if "usuario_logado" not in st.session_state:
         st.session_state.usuario_logado = False
-        st.session_state.plano_atual = "Gratuito (Visitante)"
-        st.session_state.nome_cliente = ""
+        st.session_state.plano_atual = "Gratuito"
+        st.session_state.nome_cliente = "Visitante"
 
     if not st.session_state.usuario_logado:
-        st.sidebar.markdown("Digite sua **Chave de Licença**:")
-        chave_input = st.sidebar.text_input("Chave de Licença", type="password")
+        st.sidebar.markdown("Insira sua **Chave de Licença**:")
+        chave_input = st.sidebar.text_input("Chave de Licença", value="FREE-DEMO-2026", type="password")
         
         if st.sidebar.button("Ativar Acesso"):
             if chave_input in st.session_state.licencas_db and st.session_state.licencas_db[chave_input]["status"] == "Ativo":
                 st.session_state.usuario_logado = True
                 st.session_state.plano_atual = st.session_state.licencas_db[chave_input]["plano"]
                 st.session_state.nome_cliente = st.session_state.licencas_db[chave_input]["nome"]
-                st.sidebar.success(f"Acesso liberado: {st.session_state.nome_cliente}!")
+                st.sidebar.success(f"Bem-vindo, {st.session_state.nome_cliente}!")
                 st.rerun()
             else:
                 st.sidebar.error("❌ Chave inválida.")
         
         st.sidebar.markdown("---")
-        st.sidebar.markdown("### 🏷️ Nossos Planos:")
+        st.sidebar.markdown("### 🏷️ Planos Disponíveis:")
+        st.sidebar.markdown("- **Gratuito:** Demonstração útil.")
         st.sidebar.markdown("- **Iniciante (R$ 17/mês):** Ficha básica.")
         st.sidebar.markdown("- **Profissional (R$ 39/mês):** Custos + Markup + Break-Even.")
-        st.sidebar.markdown("- **Premium (R$ 79/mês):** Estoque + Receitas Customizadas + ANVISA.")
-        plano_ativo = "Gratuito"
+        st.sidebar.markdown("- **Premium (R$ 79/mês):** Ilimitado + Marca Própria + ANVISA.")
+        plano_ativo = st.session_state.plano_atual
     else:
-        st.sidebar.success(f"Plano Ativo: **{st.session_state.plano_atual}**")
-        if st.sidebar.button("Sair / Trocar Chave"):
+        st.sidebar.success(f"Conta: **{st.session_state.nome_cliente}**")
+        st.sidebar.info(f"Plano: **{st.session_state.plano_atual}**")
+        if st.sidebar.button("Sair / Trocar Conta"):
             st.session_state.usuario_logado = False
             st.session_state.plano_atual = "Gratuito"
             st.rerun()
@@ -100,204 +143,270 @@ else:
 
 # --- PAINEL ADMIN ---
 if st.session_state.get("is_admin", False):
-    st.title("🛠️ Painel Administrativo - Gestão de Licenças")
-    st.markdown("Gerencie as chaves de licença dos clientes dos 3 planos.")
+    st.title("🛠️ Painel Administrativo - SaaS SaaS Master")
+    st.markdown("Gerencie licenças de clientes e visualize estatísticas gerais da plataforma.")
     
-    col_adm1, col_adm2 = st.columns(2)
-    with col_adm1:
-        st.subheader("➕ Gerar Nova Chave")
-        with st.form("form_nova_chave"):
-            nome_cliente_novo = st.text_input("Nome do Cliente", value="Ex: Confeitaria Doce Mel")
-            plano_escolhido = st.selectbox("Plano Contratado", ["Iniciante", "Profissional", "Premium"])
-            gerar_btn = st.form_submit_button("Gerar Chave de Acesso")
-            
-            if gerar_btn:
-                prefixo = "INI" if plano_escolhido == "Iniciante" else ("PRO" if plano_escolhido == "Profissional" else "PREM")
-                sufixo = ''.join(random.choices(string.digits, k=4))
-                nova_chave = f"{prefixo}-{sufixo}-{random.randint(10,99)}"
-                st.session_state.licencas_db[nova_chave] = {"plano": plano_escolhido, "nome": nome_cliente_novo, "status": "Ativo"}
-                st.success("Chave gerada com sucesso!")
-                st.code(nova_chave)
-
-    with col_adm2:
-        st.subheader("📋 Chaves Ativas")
-        df_licencas = pd.DataFrame([
-            {"Chave": k, "Plano": v["plano"], "Cliente": v["nome"], "Status": v["status"]}
-            for k, v in st.session_state.licencas_db.items()
-        ])
-        st.dataframe(df_licencas, use_container_width=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("➕ Gerar Nova Chave de Licença")
+        with st.form("form_admin_chave"):
+            nome_cli = st.text_input("Nome do Cliente / Empresa", value="Confeitaria Sabor & Arte")
+            plano_sel = st.selectbox("Plano", ["Gratuito", "Iniciante", "Profissional", "Premium"])
+            btn_gerar = st.form_submit_button("Gerar Licença")
+            if btn_gerar:
+                pref = "FREE" if plano_sel == "Gratuito" else ("INI" if plano_sel == "Iniciante" else ("PRO" if plano_sel == "Profissional" else "PREM"))
+                nova_ch = f"{pref}-{''.join(random.choices(string.digits, k=4))}-{random.randint(10,99)}"
+                st.session_state.licencas_db[nova_ch] = {"plano": plano_sel, "nome": nome_cli, "status": "Ativo"}
+                st.success(f"Chave gerada com sucesso: **{nova_ch}**")
+    with col2:
+        st.subheader("📋 Lista de Licenças Ativas")
+        df_l = pd.DataFrame([{"Chave": k, "Plano": v["plano"], "Cliente": v["nome"], "Status": v["status"]} for k, v in st.session_state.licencas_db.items()])
+        st.dataframe(df_l, use_container_width=True)
 
 else:
-    # --- APP DO CLIENTE ---
-    st.title("🥟 Sistema Universal de Custos, Fichas Técnicas & Precificação")
-    st.markdown("Atende a todos os nichos de alimentação: **Salgados, Doces, Confeitaria, Massas e Marmitas**.")
+    # --- APLICAÇÃO PRINCIPAL SaaS ---
+    marca_nome = st.session_state.config_marca["nome_empresa"]
+    st.title(f"📊 {marca_nome} - Plataforma de Precificação & Ficha Técnica")
+    st.markdown("Sistema inteligente para cálculo de custos, formação de preços, ponto de equilíbrio, fichas técnicas e rótulos para **todos os nichos de alimentação**.")
 
-    tem_profissional = plano_ativo in ["Profissional", "Premium"]
-    tem_premium = plano_ativo == "Premium"
+    is_free = plano_ativo == "Gratuito"
+    is_ini_or_above = plano_ativo in ["Iniciante", "Profissional", "Premium"]
+    is_pro_or_above = plano_ativo in ["Profissional", "Premium"]
+    is_premium = plano_ativo == "Premium"
 
-    if plano_ativo == "Gratuito":
-        st.warning("⚠️ Modo de demonstração (Visitante). Insira uma chave de licença válida na barra lateral para liberar as funcionalidades do seu plano.")
+    # Abas da Plataforma
+    tabs_lista = ["📈 Dashboard", "📦 Insumos & Embalagens", "💸 Custos Fixos & Variáveis", "⭐ Ficha Técnica & Precificação", "🎯 Simulador & Metas"]
+    if is_premium:
+        tabs_lista.append("🎨 Minha Marca (White-Label)")
+        tabs_lista.append("🏷️ Rotulagem ANVISA Oficial")
 
-    tabs = ["📊 Ficha Técnica Básica"]
-    if tem_profissional:
-        tabs.append("💰 Precificação & Ponto de Equilíbrio")
-    if tem_premium:
-        tabs.append("📦 Gestão de Insumos (Estoque)")
-        tabs.append("⭐ Construtor Inteligente de Receitas")
-        tabs.append("🏷️ Rotulagem ANVISA Oficial")
+    selected_tabs = st.tabs(tabs_lista)
 
-    selected_tabs = st.tabs(tabs)
-
-    # ABA 1: Iniciante
+    # 1. DASHBOARD
     with selected_tabs[0]:
-        st.header("📊 Ficha Técnica & Custo Base")
-        peso_un = st.slider("Peso médio de cada unidade (g)", 10, 50, 20, 5)
+        st.header("📈 Dashboard Gerencial")
+        st.markdown("Visão geral da sua operação, rentabilidade e produtos cadastrados.")
         
-        f_trigo = st.session_state.estoque_insumos.get("Farinha de Trigo", {}).get("preco", 5.0)
-        p_frango = st.session_state.estoque_insumos.get("Peito de Frango", {}).get("preco", 18.0)
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        col_m1.metric("Produtos Cadastrados", len(st.session_state.produtos_cadastrados))
+        col_m2.metric("Insumos no Estoque", len(st.session_state.estoque_insumos))
+        col_m3.metric("Custos Fixos Totais", f"R$ {sum(st.session_state.custos_fixos.values()):.2f}")
+        col_m4.metric("Seu Plano Atual", plano_ativo)
         
-        total_cost_per_kg = (0.3 * p_frango) + (4.0 * f_trigo) / 5.9 + 1.50
-        total_units = 1000 / peso_un
-        cost_per_unit = total_cost_per_kg / total_units
+        st.markdown("---")
+        st.subheader("📋 Seus Produtos Cadastrados")
+        if st.session_state.produtos_cadastrados:
+            df_prod = pd.DataFrame(st.session_state.produtos_cadastrados)
+            st.dataframe(df_prod, use_container_width=True)
+        else:
+            st.info("Nenhum produto cadastrado ainda. Vá na aba **Ficha Técnica & Precificação** para cadastrar seu primeiro produto.")
+
+    # 2. INSUMOS & EMBALAGENS
+    with selected_tabs[1]:
+        st.header("📦 Gestão de Insumos & Embalagens")
+        st.markdown("Cadastre os ingredientes e embalagens de qualquer nicho (doces, salgados, massas, bolos, marmitas) e atualize preços sempre que necessário.")
         
+        col_e1, col_e2 = st.columns(2)
+        with col_e1:
+            st.subheader("Insumos (Matéria-Prima)")
+            with st.form("form_insumo"):
+                nome_i = st.text_input("Nome do Insumo (ex: Chocolate, Farinha, Carne)")
+                preco_i = st.number_input("Preço de Compra (R$)", value=10.0, step=0.50)
+                unidade_i = st.selectbox("Unidade", ["kg", "L", "un", "g", "ml", "pct"])
+                forn_i = st.text_input("Fornecedor", value="Fornecedor Local")
+                salvar_i = st.form_submit_button("Salvar Insumo")
+                if salvar_i and nome_i:
+                    st.session_state.estoque_insumos[nome_i] = {"preco": preco_i, "unidade": unidade_i, "fornecedor": forn_i}
+                    st.success(f"Insumo **{nome_i}** salvo com sucesso!")
+            
+            st.markdown("---")
+            pesquisa_insumo = st.text_input("🔍 Pesquisar Insumo por Nome", value="")
+            filtro_fornecedor = st.selectbox("Filtrar por Fornecedor", ["Todos"] + list(set(v["fornecedor"] for v in st.session_state.estoque_insumos.values())))
+            
+            insumos_filtrados = []
+            for k, v in st.session_state.estoque_insumos.items():
+                match_nome = pesquisa_insumo.lower() in k.lower()
+                match_forn = (filtro_fornecedor == "Todos" or v["fornecedor"] == filtro_fornecedor)
+                if match_nome and match_forn:
+                    insumos_filtrados.append({"Insumo": k, "Preço (R$)": v["preco"], "Unidade": v["unidade"], "Fornecedor": v["fornecedor"]})
+            
+            df_ins = pd.DataFrame(insumos_filtrados)
+            st.dataframe(df_ins, use_container_width=True)
+
+        with col_e2:
+            st.subheader("Embalagens & Etiquetas")
+            with st.form("form_emb"):
+                nome_e = st.text_input("Nome da Embalagem (ex: Caixa, Pote, Saco)")
+                preco_e = st.number_input("Preço Unitário (R$)", value=1.0, step=0.10)
+                forn_e = st.text_input("Fornecedor da Embalagem", value="Embalagens Express")
+                salvar_e = st.form_submit_button("Salvar Embalagem")
+                if salvar_e and nome_e:
+                    st.session_state.embalagens[nome_e] = {"preco": preco_e, "fornecedor": forn_e}
+                    st.success(f"Embalagem **{nome_e}** salva com sucesso!")
+            
+            df_emb = pd.DataFrame([{"Embalagem": k, "Preço Unit. (R$)": v["preco"], "Fornecedor": v["fornecedor"]} for k, v in st.session_state.embalagens.items()])
+            st.dataframe(df_emb, use_container_width=True)
+
+    # 3. CUSTOS FIXOS & VARIÁVEIS
+    with selected_tabs[2]:
+        st.header("💸 Custos Fixos & Variáveis")
+        st.markdown("Informe seus gastos mensais para que o sistema calcule corretamente o rateio nos seus produtos.")
+        
+        with st.form("form_custo_fixo"):
+            st.subheader("Adicionar / Atualizar Custo Fixo")
+            col_cf1, col_cf2 = st.columns(2)
+            nome_cf = col_cf1.text_input("Nome do Custo (ex: Aluguel, Energia, Pró-Labore)")
+            valor_cf = col_cf2.number_input("Valor Mensal (R$)", value=200.0, step=50.0)
+            salvar_cf = st.form_submit_button("Salvar Custo Fixo")
+            if salvar_cf and nome_cf:
+                st.session_state.custos_fixos[nome_cf] = valor_cf
+                st.success(f"Custo fixo **{nome_cf}** atualizado!")
+        
+        df_cf = pd.DataFrame([{"Custo Fixo": k, "Valor Mensal (R$)": v} for k, v in st.session_state.custos_fixos.items()])
+        st.dataframe(df_cf, use_container_width=True)
+        st.metric("Total de Custos Fixos Mensais", f"R$ {sum(st.session_state.custos_fixos.values()):.2f}")
+
+    # 4. FICHA TÉCNICA & PRECIFICAÇÃO
+    with selected_tabs[3]:
+        st.header("⭐ Ficha Técnica & Calculadora de Precificação")
+        st.markdown("Monte seu produto selecionando insumos do estoque, defina margem de lucro e descubra o preço de venda exato.")
+        
+        if is_free:
+            st.warning("⚠️ No plano Gratuito você pode visualizar o modelo abaixo. Faça upgrade para o plano Profissional ou Premium para cadastrar seus próprios produtos ilimitados.")
+        
+        with st.form("form_ficha_tecnica"):
+            nome_prod = st.text_input("Nome do Produto (ex: Bolo de Chocolate, Coxinha, Esfiha)", value="Brigadeiro Gourmet (Lote 50 un)")
+            rendimento_prod = st.number_input("Rendimento do Lote (unidades ou porções)", value=50, step=5)
+            peso_unit_prod = st.number_input("Peso de cada unidade (g)", value=20, step=5)
+            
+            st.markdown("### Selecione os Ingredientes do Estoque:")
+            insumos_disponiveis = list(st.session_state.estoque_insumos.keys())
+            
+            ingredientes_usados = []
+            for idx in range(5):
+                col_s1, col_s2 = st.columns([3, 2])
+                ing_sel = col_s1.selectbox(f"Ingrediente {idx+1}", ["-- Nenhum --"] + insumos_disponiveis, key=f"ing_f_{idx}")
+                qtd_sel = col_s2.number_input(f"Qtd usada no lote ({idx+1})", value=0.0, step=0.1, format="%.3f", key=f"qtd_f_{idx}")
+                
+                if ing_sel != "-- Nenhum --" and qtd_sel > 0:
+                    p_unit = st.session_state.estoque_insumos[ing_sel]["preco"]
+                    un_med = st.session_state.estoque_insumos[ing_sel]["unidade"]
+                    c_parcial = qtd_sel * p_unit
+                    ingredientes_usados.append({
+                        "Ingrediente": ing_sel,
+                        "Quantidade": f"{qtd_sel} {un_med}",
+                        "Custo Total": c_parcial
+                    })
+            
+            emb_disponiveis = list(st.session_state.embalagens.keys())
+            emb_escolhida = st.selectbox("Embalagem Utilizada", ["-- Nenhuma --"] + emb_disponiveis)
+            custo_emb = st.session_state.embalagens[emb_escolhida]["preco"] if emb_escolhida != "-- Nenhuma --" else 0.50
+            
+            margem_lucro_desejada = st.slider("Margem de Lucro Desejada (%)", 10, 80, 30, 5)
+            
+            calcular_prod_btn = st.form_submit_button("🧮 Calcular Preço de Venda e Ficha Técnica")
+            
+        if calcular_prod_btn:
+            if ingredientes_usados:
+                df_ing_res = pd.DataFrame(ingredientes_usados)
+                soma_insumos = df_ing_res["Custo Total"].sum()
+                custo_total_lote = soma_insumos + custo_emb
+                custo_unit = custo_total_lote / rendimento_prod
+                
+                # Markup / Divisor
+                imposto_taxa = 10 # 10% taxas cartão/impostos
+                divisor = max(0.1, (100 - (margem_lucro_desejada + imposto_taxa)) / 100)
+                preco_venda_lote = custo_total_lote / divisor
+                preco_venda_unit = preco_venda_lote / rendimento_prod
+                
+                st.markdown("---")
+                st.subheader(f"📊 Resultado da Ficha Técnica: {nome_prod}")
+                
+                col_res1, col_res2, col_res3 = st.columns(3)
+                col_res1.metric("Custo Total do Lote", f"R$ {custo_total_lote:.2f}")
+                col_res2.metric("Custo por Unidade", f"R$ {custo_unit:.2f}")
+                col_res3.metric("Preço Sugerido (Unidade)", f"R$ {preco_venda_unit:.2f}", delta=f"Lucro: R$ {(preco_venda_unit - custo_unit):.2f}/un")
+                
+                st.markdown("### Detalhamento dos Custos")
+                st.table(df_ing_res)
+                
+                # Salvar no dashboard
+                novo_p = {
+                    "nome": nome_prod,
+                    "rendimento": rendimento_prod,
+                    "peso_un": peso_unit_prod,
+                    "custo_total": round(custo_total_lote, 2),
+                    "preco_sugerido": round(preco_venda_lote, 2),
+                    "lucro": round(preco_venda_lote - custo_total_lote, 2)
+                }
+                # Evita duplicatas exatas
+                if novo_p not in st.session_state.produtos_cadastrados:
+                    st.session_state.produtos_cadastrados.append(novo_p)
+                st.success("Produto calculado e salvo no Dashboard com sucesso!")
+            else:
+                st.warning("⚠️ Selecione pelo menos um ingrediente e informe a quantidade.")
+
+    # 5. SIMULADOR & METAS
+    with selected_tabs[4]:
+        st.header("🎯 Simulador de Preços & Ponto de Equilíbrio")
+        st.markdown("Descubra exatamente quantas unidades você precisa vender para cobrir todos os seus custos fixos e atingir sua meta de lucro.")
+        
+        col_s1, col_s2 = st.columns(2)
+        custo_fixo_total = sum(st.session_state.custos_fixos.values())
+        
+        ticket_medio = col_s1.number_input("Preço de Venda Médio por Unidade/Pacote (R$)", value=25.0, step=1.0)
+        custo_variavel_unit = col_s2.number_input("Custo Variável por Unidade (R$)", value=10.0, step=1.0)
+        
+.marginal_contrib = ticket_medio - custo_variavel_unit
+        break_even_unidades = (custo_fixo_total / marginal_contrib) if marginal_contrib > 0 else 0
+        
+        st.markdown("---")
         col_b1, col_b2 = st.columns(2)
-        col_b1.metric("Custo Total por kg", f"R$ {total_cost_per_kg:.2f}")
-        col_b2.metric(f"Custo Unitário ({peso_un}g)", f"R$ {cost_per_unit:.2f}")
-        
-        if plano_ativo == "Gratuito":
-            st.info("💡 Faça o upgrade para o **Plano Profissional (R$ 39/mês)** para calcular margens de lucro, markup automático e o ponto de equilíbrio!")
+        col_b1.metric("Ponto de Equilíbrio (Break-Even)", f"{int(break_even_unidades) + 1} unidades / mês")
+        col_b2.metric("Margem de Contribuição Unitária", f"R$ {marginal_contrib:.2f}")
+        st.info(f"💡 Para pagar todos os custos fixos de **R$ {custo_fixo_total:.2f}**, você precisa vender pelo menos a quantidade indicada acima.")
 
-    # ABA 2: Profissional
-    if tem_profissional:
-        with selected_tabs[1]:
-            st.header("💰 Módulo Profissional: Precificação Avançada & Break-Even")
-            col_p1, col_p2 = st.columns(2)
-            fixed_costs = col_p1.number_input("Custos Fixos Mensais (R$)", value=1500.00, step=100.00)
-            profit_margin = col_p2.slider("Margem de Lucro Desejada (%)", 10, 60, 30, 5)
+    # 6. MINHA MARCA (WHITE-LABEL) - PREMIUM
+    tab_idx = 5
+    if is_premium and len(selected_tabs) > tab_idx:
+        with selected_tabs[tab_idx]:
+            st.header("🎨 Minha Marca (Personalização White-Label)")
+            st.markdown("Personalize o nome da sua empresa, dados de contato e identidade visual para que apareçam nos relatórios e documentos.")
             
-            opex_percent = 20
-            tax_percent = 5
-            total_deductions = profit_margin + opex_percent + tax_percent
-            divisor = max(0.1, (100 - total_deductions) / 100)
-            
-            suggested_price = total_cost_per_kg / divisor
-            unit_price = suggested_price / total_units
-            profit_kg = suggested_price - total_cost_per_kg
-            
-            contribution_margin = suggested_price - total_cost_per_kg
-            break_even_kg = fixed_costs / contribution_margin if contribution_margin > 0 else 0
-            
-            col_m1, col_m2 = st.columns(2)
-            col_m1.metric("Preço de Venda Sugerido (1 kg)", f"R$ {suggested_price:.2f}", delta=f"Lucro: R$ {profit_kg:.2f}/kg")
-            col_m2.metric(f"Preço Sugerido por Unidade ({peso_un}g)", f"R$ {unit_price:.2f}")
-            
-            st.markdown("---")
-            st.subheader("📈 Ponto de Equilíbrio (Break-Even)")
-            st.metric("Volume Mínimo de Vendas para Cobrir Custos", f"{break_even_kg:.1f} kg / mês")
+            with st.form("form_marca"):
+                m_nome = st.text_input("Nome da Empresa", value=st.session_state.config_marca["nome_empresa"])
+                m_fantasia = st.text_input("Nome Fantasia / Slogan", value=st.session_state.config_marca["nome_fantasia"])
+                m_whats = st.text_input("WhatsApp de Contato", value=st.session_state.config_marca["whatsapp"])
+                m_email = st.text_input("E-mail de Contato", value=st.session_state.config_marca["email"])
+                
+                salvar_marca = st.form_submit_button("Salvar Identidade da Marca")
+                if salvar_marca:
+                    st.session_state.config_marca["nome_empresa"] = m_nome
+                    st.session_state.config_marca["nome_fantasia"] = m_fantasia
+                    st.session_state.config_marca["whatsapp"] = m_whats
+                    st.session_state.config_marca["email"] = m_email
+                    st.success("Dados da marca salvos com sucesso! Atualize a página para ver o novo nome no topo.")
+        tab_idx += 1
 
-    # ABA 3: Gestão de Insumos (Estoque) - Premium
-    tab_index = 2
-    if tem_premium:
-        with selected_tabs[tab_index]:
-            st.header("📦 Gestão de Insumos & Preços (Estoque Universal)")
-            st.markdown("Cadastre ingredientes para qualquer nicho (salgados, doces, confeitarias) e atualize preços sempre que precisar.")
+        # 7. ROTULAGEM ANVISA - PREMIUM
+        with selected_tabs[tab_idx]:
+            st.header("🏷️ Geração de Rótulo ANVISA Oficial")
+            st.markdown("Prévia de rótulo nutricional pronta para impressão com logomarca e código de barras.")
             
-            with st.form("form_add_insumo"):
-                st.subheader("Adicionar ou Atualizar Ingrediente")
-                col_in1, col_in2, col_in3 = st.columns(3)
-                novo_nome = col_in1.text_input("Nome do Insumo (ex: Leite Condensado, Chocolate)", value="")
-                novo_preco = col_in2.number_input("Preço Unitário (R$)", value=10.0, step=0.50)
-                nova_unidade = col_in3.selectbox("Unidade de Medida", ["kg", "L", "un", "g", "ml", "pct"])
-                
-                salvar_insumo = st.form_submit_button("Salvar no Estoque")
-                if salvar_insumo and novo_nome:
-                    st.session_state.estoque_insumos[novo_nome] = {"preco": novo_preco, "unidade": nova_unidade}
-                    st.success(f"Insumo **{novo_nome}** salvo/atualizado com sucesso!")
+            marca_atual = st.session_state.config_marca["nome_empresa"]
+            slogan_atual = st.session_state.config_marca["nome_fantasia"]
             
-            st.markdown("---")
-            st.subheader("Seus Insumos Cadastrados no Sistema")
-            insumos_list = [{"Ingrediente": k, "Preço (R$)": v["preco"], "Unidade": v["unidade"]} for k, v in st.session_state.estoque_insumos.items()]
-            st.dataframe(pd.DataFrame(insumos_list), use_container_width=True)
-            st.info("💡 Estes ingredientes aparecem automaticamente no **Construtor Inteligente de Receitas**.")
-        
-        tab_index += 1
-
-        # ABA 4: Construtor Inteligente de Receitas - Premium
-        with selected_tabs[tab_index]:
-            st.header("⭐ Construtor Inteligente de Receitas (Multi-Nicho)")
-            st.markdown("Selecione os ingredientes do estoque, informe a quantidade usada e o sistema calcula tudo instantaneamente.")
-            
-            with st.form("form_receita_inteligente"):
-                nome_receita_custom = st.text_input("Nome do Produto (ex: Brigadeiro Gourmet, Esfiha, Bolo de Pote)", value="Brigadeiro Gourmet")
-                rendimento_lote_custom = st.number_input("Rendimento do Lote (unidades ou porções)", value=50, step=5)
-                
-                st.markdown("### Selecione os Ingredientes para o Lote:")
-                ingredientes_disponiveis = list(st.session_state.estoque_insumos.keys())
-                ingredientes_selecionados = []
-                
-                for idx in range(6):
-                    col_s1, col_s2 = st.columns([3, 2])
-                    ing_escolhido = col_s1.selectbox(f"Ingrediente {idx+1}", ["-- Nenhum --"] + ingredientes_disponiveis, key=f"ing_esc_{idx}")
-                    qtd_usada = col_s2.number_input(f"Qtd usada no lote ({idx+1})", value=0.0, step=0.1, format="%.3f", key=f"qtd_usada_{idx}")
-                    
-                    if ing_escolhido != "-- Nenhum --" and qtd_usada > 0:
-                        preco_unit = st.session_state.estoque_insumos[ing_escolhido]["preco"]
-                        unidade_medida = st.session_state.estoque_insumos[ing_escolhido]["unidade"]
-                        custo_parcial = qtd_usada * preco_unit
-                        ingredientes_selecionados.append({
-                            "Ingrediente": ing_escolhido,
-                            "Quantidade": f"{qtd_usada} {unidade_medida}",
-                            "Preço Unit.": f"R$ {preco_unit:.2f}",
-                            "Custo Total": custo_parcial
-                        })
-                
-                custo_embalagem_lote = st.number_input("Custo de Embalagem / Embalagem para o Lote (R$)", value=5.00, step=0.50)
-                calcular_receita_btn = st.form_submit_button("🧮 Calcular Custos e Precificação")
-                
-            if calcular_receita_btn:
-                if ingredientes_selecionados:
-                    df_rec_result = pd.DataFrame(ingredientes_selecionados)
-                    custo_ingredientes_soma = df_rec_result["Custo Total"].sum()
-                    custo_total_lote_final = custo_ingredientes_soma + custo_embalagem_lote
-                    custo_unitario_final = custo_total_lote_final / rendimento_lote_custom
-                    
-                    div_custom = (100 - (30 + 20 + 5)) / 100
-                    preco_venda_lote_sug = custo_total_lote_final / max(0.1, div_custom)
-                    preco_venda_unit_sug = preco_venda_lote_sug / rendimento_lote_custom
-                    
-                    st.markdown("---")
-                    st.subheader(f"📊 Relatório de Custos: {nome_receita_custom}")
-                    
-                    col_c1, col_c2, col_c3 = st.columns(3)
-                    col_c1.metric("Custo Total do Lote", f"R$ {custo_total_lote_final:.2f}")
-                    col_c2.metric("Custo por Unidade", f"R$ {custo_unitario_final:.2f}")
-                    col_c3.metric("Preço de Venda Sugerido (Un.)", f"R$ {preco_venda_unit_sug:.2f}", delta=f"Lucro: R$ {(preco_venda_unit_sug - custo_unitario_final):.2f}/un")
-                    
-                    st.markdown("### Detalhamento dos Custos")
-                    st.table(df_rec_result)
-                    st.success("Receita calculada com sucesso!")
-                else:
-                    st.warning("⚠️ Selecione pelo menos um ingrediente e informe a quantidade.")
-
-        tab_index += 1
-
-        # ABA 5: Rotulagem ANVISA - Premium
-        with selected_tabs[tab_index]:
-            st.header("🏷️ Geração de Rótulo ANVISA Oficial (100x150mm)")
-            st.markdown("Prévia oficial pronta para impressão com logomarca e código de barras.")
-            
-            rotulo_html = """
-            <div style="background-color: white; color: black; padding: 20px; border-radius: 10px; border: 2px solid #ccc; max-width: 450px; margin: auto; font-family: Arial, sans-serif; font-size: 12px;">
-                <div style="text-align: center; font-weight: bold; font-size: 14px; color: #b45309;">TeoDoro's Salgados & Doces</div>
-                <div style="text-align: center; font-size: 11px; color: #555;">Artesanais & Congelados</div>
+            rotulo_html = f"""
+            <div style="background-color: white; color: black; padding: 20px; border-radius: 10px; border: 2px solid #333; max-width: 450px; margin: auto; font-family: Arial, sans-serif; font-size: 12px;">
+                <div style="text-align: center; font-weight: bold; font-size: 15px; color: #b45309;">{marca_atual}</div>
+                <div style="text-align: center; font-size: 11px; color: #555;">{slogan_atual}</div>
                 <hr style="margin: 8px 0;">
                 <div style="text-align: center; font-weight: bold; font-size: 13px;">TABELA NUTRICIONAL</div>
-                <div style="text-align: center; font-size: 11px; color: #1e40af;">Produto Artesanal</div>
-                  
-
+                <div style="text-align: center; font-size: 11px; color: #1e40af;">Produto Artesanal de Alta Qualidade</div>
+                <br>
                 <div style="border: 1px solid black; padding: 6px;">
                     <div style="text-align: center; font-weight: bold; font-size: 11px;">INFORMAÇÃO NUTRICIONAL</div>
-                    <div style="font-size: 9px;">Porção de referência conforme ANVISA</div>
+                    <div style="font-size: 9px;">Porção de referência conforme RDC 429/2020 ANVISA</div>
                     <table style="width: 100%; font-size: 9px; border-collapse: collapse; margin-top: 4px;" border="1">
                         <tr style="background: #eee;">
                             <th>Nutriente</th><th>100g</th><th>Porção</th><th>%VD*</th>
@@ -309,16 +418,54 @@ else:
                         <tr><td>Sódio</td><td>323 mg</td><td>129 mg</td><td>6%</td></tr>
                     </table>
                 </div>
-                  
-
+                <br>
                 <div style="font-size: 10px;">
-                    <b>INGREDIENTES:</b> Conforme cadastro no estoque.  
-
+                    <b>INGREDIENTES:</b> Conforme ficha técnica cadastrada no estoque.<br>
                     <b>ALÉRGICOS:</b> CONTÉM GLÚTEN E DERIVADOS.
                 </div>
-                <div style="text-align: center; margin-top: 10px; font-family: monospace; font-size: 11px;">
-                    ||| ||||| |||| |||||   
-7891020304055
+                <div style="text-align: center; margin-top: 12px;">
+                    <svg width="220" height="60" viewBox="0 0 220 60" style="background: white;">
+                        <!-- Barras EAN-13 simuladas com precisão gráfica -->
+                        <rect x="10" y="5" width="3" height="45" fill="black"/>
+                        <rect x="15" y="5" width="2" height="45" fill="black"/>
+                        <rect x="19" y="5" width="4" height="45" fill="black"/>
+                        <rect x="25" y="5" width="2" height="45" fill="black"/>
+                        <rect x="30" y="5" width="3" height="45" fill="black"/>
+                        <rect x="35" y="5" width="5" height="45" fill="black"/>
+                        <rect x="43" y="5" width="2" height="45" fill="black"/>
+                        <rect x="47" y="5" width="3" height="45" fill="black"/>
+                        <rect x="53" y="5" width="4" height="45" fill="black"/>
+                        <rect x="59" y="5" width="2" height="45" fill="black"/>
+                        <rect x="65" y="5" width="3" height="45" fill="black"/>
+                        <rect x="70" y="5" width="2" height="45" fill="black"/>
+                        <!-- Barra central -->
+                        <rect x="75" y="5" width="2" height="50" fill="black"/>
+                        <rect x="79" y="5" width="3" height="50" fill="black"/>
+                        <!-- Lado direito -->
+                        <rect x="85" y="5" width="3" height="45" fill="black"/>
+                        <rect x="91" y="5" width="2" height="45" fill="black"/>
+                        <rect x="96" y="5" width="4" height="45" fill="black"/>
+                        <rect x="103" y="5" width="2" height="45" fill="black"/>
+                        <rect x="108" y="5" width="3" height="45" fill="black"/>
+                        <rect x="114" y="5" width="5" height="45" fill="black"/>
+                        <rect x="122" y="5" width="2" height="45" fill="black"/>
+                        <rect x="127" y="5" width="3" height="45" fill="black"/>
+                        <rect x="133" y="5" width="4" height="45" fill="black"/>
+                        <rect x="139" y="5" width="2" height="45" fill="black"/>
+                        <rect x="145" y="5" width="3" height="45" fill="black"/>
+                        <rect x="150" y="5" width="2" height="45" fill="black"/>
+                        <rect x="155" y="5" width="3" height="45" fill="black"/>
+                        <rect x="160" y="5" width="4" height="45" fill="black"/>
+                        <rect x="167" y="5" width="2" height="45" fill="black"/>
+                        <rect x="172" y="5" width="3" height="45" fill="black"/>
+                        <rect x="178" y="5" width="5" height="45" fill="black"/>
+                        <rect x="186" y="5" width="2" height="45" fill="black"/>
+                        <rect x="191" y="5" width="3" height="45" fill="black"/>
+                        <rect x="197" y="5" width="4" height="45" fill="black"/>
+                        <rect x="203" y="5" width="3" height="45" fill="black"/>
+                        <rect x="208" y="5" width="2" height="45" fill="black"/>
+                    </svg>
+                    <div style="font-family: monospace; font-size: 11px; letter-spacing: 2px; font-weight: bold; margin-top: 2px;">7 891020 304055</div>
                 </div>
             </div>
             """
